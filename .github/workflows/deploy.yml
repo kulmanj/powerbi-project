@@ -13,27 +13,33 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
+    - name: Install Python
+      uses: actions/setup-python@v5
       with:
-        node-version: '18'
+        python-version: '3.11'
 
-    - name: Install Power BI CLI
-      run: |
-        npm install -g powerbi-cli
-        echo "$(npm bin -g)" >> $GITHUB_PATH
+    - name: Install Requests
+      run: pip install requests
 
-    - name: Verify CLI
+    - name: Authenticate & Test Power BI
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        TENANT_ID: ${{ secrets.TENANT_ID }}
       run: |
-        pbicli --version
+        python <<EOF
+        import requests
 
-    - name: Login to Power BI
-      run: |
-        pbicli login --service-principal \
-        -t ${{ secrets.TENANT_ID }} \
-        -i ${{ secrets.CLIENT_ID }} \
-        -s ${{ secrets.CLIENT_SECRET }}
+        url = f"https://login.microsoftonline.com/{'${{ secrets.TENANT_ID }}'}/oauth2/v2.0/token"
 
-    - name: Test Workspace Access
-      run: |
-        pbicli group list
+        payload = {
+            'grant_type': 'client_credentials',
+            'client_id': '${{ secrets.CLIENT_ID }}',
+            'client_secret': '${{ secrets.CLIENT_SECRET }}',
+            'scope': 'https://analysis.windows.net/powerbi/api/.default'
+        }
+
+        response = requests.post(url, data=payload)
+        print("Status:", response.status_code)
+        print("Response:", response.text)
+        EOF
