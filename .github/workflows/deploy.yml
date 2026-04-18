@@ -21,16 +21,18 @@ jobs:
     - name: Install Requests
       run: pip install requests
 
-    - name: Authenticate & Test Power BI
+    - name: Deploy to Power BI
       env:
         CLIENT_ID: ${{ secrets.CLIENT_ID }}
         CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         TENANT_ID: ${{ secrets.TENANT_ID }}
+        WORKSPACE_ID: ${{ secrets.WORKSPACE_ID }}
       run: |
         python <<EOF
         import requests
 
-        url = f"https://login.microsoftonline.com/{'${{ secrets.TENANT_ID }}'}/oauth2/v2.0/token"
+        # Step 1: Get Token
+        token_url = f"https://login.microsoftonline.com/{'${{ secrets.TENANT_ID }}'}/oauth2/v2.0/token"
 
         payload = {
             'grant_type': 'client_credentials',
@@ -39,7 +41,24 @@ jobs:
             'scope': 'https://analysis.windows.net/powerbi/api/.default'
         }
 
-        response = requests.post(url, data=payload)
-        print("Status:", response.status_code)
-        print("Response:", response.text)
+        token_response = requests.post(token_url, data=payload)
+        access_token = token_response.json().get("access_token")
+
+        print("Token Status:", token_response.status_code)
+
+        # Step 2: Upload PBIX
+        url = f"https://api.powerbi.com/v1.0/myorg/groups/{'${{ secrets.WORKSPACE_ID }}'}/imports?datasetDisplayName=Sample&nameConflict=CreateOrOverwrite"
+
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+
+        files = {
+            'file': ('Sample.pbix', open('Sample.pbix', 'rb'), 'application/octet-stream')
+        }
+
+        response = requests.post(url, headers=headers, files=files)
+
+        print("Upload Status:", response.status_code)
+        print("Upload Response:", response.text)
         EOF
