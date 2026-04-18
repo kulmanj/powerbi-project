@@ -13,8 +13,19 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
     - name: Install Power BI CLI
-      run: npm install -g powerbi-cli
+      run: |
+        npm install -g powerbi-cli
+        echo "$(npm bin -g)" >> $GITHUB_PATH
+
+    - name: Verify CLI
+      run: |
+        pbicli --version
 
     - name: Login to Power BI
       run: |
@@ -23,9 +34,6 @@ jobs:
         -i ${{ secrets.CLIENT_ID }} \
         -s ${{ secrets.CLIENT_SECRET }}
 
-    - name: Deploy PBIP Project
+    - name: Test Workspace Access
       run: |
-        pbicli import pbip \
-        --workspace ${{ secrets.WORKSPACE_ID }} \
-        --path . \
-        --name "Auto Deploy Report"
+        pbicli group list
