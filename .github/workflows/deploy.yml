@@ -1,0 +1,64 @@
+name: Power BI CI/CD
+ 
+on:
+  push:
+    branches:
+      - main
+ 
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+ 
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+ 
+    - name: Install Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+ 
+    - name: Install Requests
+      run: pip install requests
+ 
+    - name: Deploy to Power BI
+      env:
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        TENANT_ID: ${{ secrets.TENANT_ID }}
+        WORKSPACE_ID: ${{ secrets.WORKSPACE_ID }}
+      run: |
+        python <<EOF
+        import requests
+ 
+        # Step 1: Get Token
+        token_url = f"https://login.microsoftonline.com/{'${{ secrets.TENANT_ID }}'}/oauth2/v2.0/token"
+ 
+        payload = {
+            'grant_type': 'client_credentials',
+            'client_id': '${{ secrets.CLIENT_ID }}',
+            'client_secret': '${{ secrets.CLIENT_SECRET }}',
+            'scope': 'https://analysis.windows.net/powerbi/api/.default'
+        }
+ 
+        token_response = requests.post(token_url, data=payload)
+        access_token = token_response.json().get("access_token")
+ 
+        print("Token Status:", token_response.status_code)
+ 
+        # Step 2: Upload PBIX
+        url = f"https://api.powerbi.com/v1.0/myorg/groups/{'${{ secrets.WORKSPACE_ID }}'}/imports?datasetDisplayName=Sample&nameConflict=CreateOrOverwrite"
+ 
+        headers = {
+            "Authorization": f"Bearer {access_token}"
+        }
+ 
+        files = {
+            'file': ('Sample.pbix', open('Sample.pbix', 'rb'), 'application/octet-stream')
+        }
+ 
+        response = requests.post(url, headers=headers, files=files)
+ 
+        print("Upload Status:", response.status_code)
+        print("Upload Response:", response.text)
+        EOF
