@@ -58,7 +58,7 @@ jobs:
         # STEP 2: UPLOAD PBIX
         file_path = "Sample.pbix"   # 👈 yaha file name change kar sakte ho
 
-        upload_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/imports?datasetDisplayName=Samplecopy&nameConflict=CreateOrOverwrite"
+        upload_url = f"https://api.powerbi.com/v1.0/myorg/groups/{workspace_id}/imports?datasetDisplayName=Sample&nameConflict=CreateOrOverwrite"
 
         with open(file_path, "rb") as f:
             files = {"file": f}
